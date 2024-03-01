@@ -35,7 +35,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 class VanillaPlayer implements Player {
-    private static final Duration MAX_AGE = Duration.ofDays(1);
+    private static final Duration MAX_AGE = Duration.ofMinutes(15);
 
     private final UUID uuid;
 
