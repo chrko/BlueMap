@@ -40,6 +40,11 @@ public class DummyServerWorld implements ServerWorld {
         dimension = mcaWorld.getDimension();
     }
 
+    public DummyServerWorld(Path worldFolder, Key dimension) {
+        this.worldFolder = worldFolder;
+        this.dimension = dimension;
+    }
+
     @Override
     public Path getWorldFolder() {
         return worldFolder;

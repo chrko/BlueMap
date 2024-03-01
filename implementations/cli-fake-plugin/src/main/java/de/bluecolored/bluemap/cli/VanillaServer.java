@@ -24,24 +24,33 @@
  */
 package de.bluecolored.bluemap.cli;
 
+import de.bluecolored.bluemap.common.plugin.text.Text;
 import de.bluecolored.bluemap.common.serverinterface.Player;
 import de.bluecolored.bluemap.common.serverinterface.Server;
 import de.bluecolored.bluemap.common.serverinterface.ServerEventListener;
 import de.bluecolored.bluemap.common.serverinterface.ServerWorld;
 import de.bluecolored.bluemap.core.MinecraftVersion;
+import de.bluecolored.bluemap.core.resources.datapack.DataPack;
+import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.Tristate;
 import de.bluecolored.bluemap.core.world.World;
 import de.bluecolored.bluemap.core.world.mca.MCAWorld;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 
-public class VanillaServer implements Server {
+public class VanillaServer implements Server, ServerEventListener {
     private final MinecraftVersion minecraftVersion;
     private final Path serverRoot;
 
@@ -49,12 +58,28 @@ public class VanillaServer implements Server {
 
     private final Set<ServerWorld> serverWorlds;
 
-    public VanillaServer() {
+    private final PlayerProvider playerProvider;
+
+    public VanillaServer() throws IOException {
         this.serverRoot = Path.of("").toAbsolutePath().normalize();
 
         minecraftVersion = MinecraftVersion.LATEST_SUPPORTED;
         listeners = new ArrayList<>();
+
+        Properties serverProperties = new Properties();
+        try (var in = Files.newInputStream(serverRoot.resolve("server.properties"))) {
+            serverProperties.load(in);
+        }
+
+        String levelName = Objects.requireNonNull(serverProperties.getProperty("level-name"));
+        var worldFolder = serverRoot.resolve(levelName).toAbsolutePath().normalize();
+
         serverWorlds = new HashSet<>();
+        for (Key key : Arrays.asList(DataPack.DIMENSION_OVERWORLD, DataPack.DIMENSION_THE_NETHER, DataPack.DIMENSION_THE_END)) {
+            serverWorlds.add(new DummyServerWorld(worldFolder, key));
+        }
+
+        playerProvider = new PlayerProvider(this, serverRoot.resolve("usercache.json"), worldFolder.resolve("playerdata"));
     }
 
     @Override
@@ -86,15 +111,14 @@ public class VanillaServer implements Server {
     public Optional<ServerWorld> getServerWorld(World world) {
         if (world instanceof MCAWorld) {
             ServerWorld serverWorld = new DummyServerWorld((MCAWorld) world);
-            serverWorlds.add(serverWorld);
             return Optional.of(serverWorld);
         }
-        return Server.super.getServerWorld(world);
+        return Optional.empty();
     }
 
     @Override
     public Collection<Player> getOnlinePlayers() {
-        return Collections.emptyList();
+        return playerProvider.getActivePlayers();
     }
 
     @Override
@@ -105,5 +129,26 @@ public class VanillaServer implements Server {
     @Override
     public void unregisterAllListeners() {
         listeners.clear();
+    }
+
+    @Override
+    public void onPlayerJoin(UUID playerUuid) {
+        for (ServerEventListener listener : listeners) {
+            listener.onPlayerJoin(playerUuid);
+        }
+    }
+
+    @Override
+    public void onPlayerLeave(UUID playerUuid) {
+        for (ServerEventListener listener : listeners) {
+            listener.onPlayerLeave(playerUuid);
+        }
+    }
+
+    @Override
+    public void onChatMessage(Text message) {
+        for (ServerEventListener listener : listeners) {
+            listener.onChatMessage(message);
+        }
     }
 }
