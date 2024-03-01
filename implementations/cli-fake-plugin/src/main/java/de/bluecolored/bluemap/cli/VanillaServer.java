@@ -151,4 +151,8 @@ public class VanillaServer implements Server, ServerEventListener {
             listener.onChatMessage(message);
         }
     }
+
+    public void close() {
+        playerProvider.close();
+    }
 }

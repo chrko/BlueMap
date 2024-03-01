@@ -147,7 +147,7 @@ public class PlayerDataNBT {
 
     public Collection<ActiveEffect> getActiveEffects() {
         return activeEffects.stream().filter(activeEffect -> activeEffect.duration == -1 ||
-        lastModified.plusMillis(activeEffect.duration * 50L).isAfter(Instant.now())).collect(Collectors.toUnmodifiableList());
+                lastModified.plusMillis(activeEffect.duration * 50L).isAfter(Instant.now())).collect(Collectors.toUnmodifiableList());
     }
 
     public Instant getLastModified() {

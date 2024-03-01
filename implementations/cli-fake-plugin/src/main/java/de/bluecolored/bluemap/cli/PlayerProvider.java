@@ -29,6 +29,7 @@ import de.bluecolored.bluemap.common.serverinterface.ServerEventListener;
 import de.bluecolored.bluemap.core.logger.Logger;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,7 +53,9 @@ public class PlayerProvider {
 
     private final Timer timer = new Timer();
 
-    private TimerTask completeReloadTask;
+    private final TimerTask completeReloadTask;
+    private final SingleFileWatcherService userCacheFileWatcher;
+    private final DirectoryWatcherService playerDataWatcher;
 
     public PlayerProvider(ServerEventListener listener, Path userCacheFile, Path playerDataFolder) {
         this.listener = listener;
@@ -71,34 +74,73 @@ public class PlayerProvider {
         completeReloadTask = new TimerTask() {
             @Override
             public void run() {
-                loadPlayers();
+                players.clear();
+                loadUserCache();
             }
         };
 
-        timer.scheduleAtFixedRate(completeReloadTask, TimeUnit.SECONDS.toMillis(30), completeReloadInterval.toMillis());
+        timer.scheduleAtFixedRate(completeReloadTask, TimeUnit.SECONDS.toMillis(5), completeReloadInterval.toMillis());
+
+        try {
+            userCacheFileWatcher = new SingleFileWatcherService(userCacheFile, this::loadUserCache, Duration.ofSeconds(10));
+            userCacheFileWatcher.start();
+        } catch (IOException e) {
+            Logger.global.logError("Could not watch the user cache file", e);
+            throw new UncheckedIOException(e);
+        }
+
+        try {
+            playerDataWatcher = new DirectoryWatcherService(playerDataFolder, this::tryUpdatePlayerData, path -> path.getFileName().toString().substring(0, 36), Duration.ofSeconds(30));
+            playerDataWatcher.start();
+        } catch (IOException e) {
+            Logger.global.logError("Could not watch the player data folder", e);
+            throw new UncheckedIOException(e);
+        }
     }
 
-    private void loadPlayers() {
+    private void loadUserCache() {
         try {
             Collection<UserCache.User> userCache = UserCache.read(Files.newBufferedReader(userCacheFile, StandardCharsets.UTF_8));
             Logger.global.logDebug("Found " + userCache.size() + " users in user cache");
 
             for (UserCache.User user : userCache) {
-                PlayerDataNBT playerDataNBT = PlayerDataNBT.read(playerDataFolder.resolve(user.getUuid().toString() + ".dat"));
-                var player = new VanillaPlayer(user, playerDataNBT);
-                player.isUpToDate();
-                players.put(player.getUuid(), player);
+                PlayerDataNBT playerDataNBT = readPlayerData(user.getUuid());
+                var player = players.get(user.getUuid());
+                if (player != null) {
+                    player.setUser(user);
+                    player.setPlayerDataNBT(playerDataNBT);
+                } else {
+                    player = new VanillaPlayer(user, playerDataNBT);
+                    players.put(player.getUuid(), player);
+                }
+                listener.onPlayerJoin(player.getUuid());
             }
         } catch (IOException e) {
             Logger.global.logError("Error reloading all players", e);
-            return;
         }
-        notifyListener();
     }
 
-    private void notifyListener() {
-        for (Player player : getActivePlayers()) {
-            listener.onPlayerJoin(player.getUuid());
+    private PlayerDataNBT readPlayerData(UUID uuid) throws IOException {
+        return PlayerDataNBT.read(playerDataFolder.resolve(uuid.toString() + ".dat"));
+    }
+
+    private void tryUpdatePlayerData(Path playerDataFile) {
+        String fileName = playerDataFile.getFileName().toString();
+        if (!fileName.endsWith(".dat")) return;
+        UUID uuid = UUID.fromString(fileName.substring(0, 36));
+
+        VanillaPlayer player = players.get(uuid);
+
+        if (player == null) {
+            Logger.global.logWarning("Got update for player not in user cache");
+            return;
+        }
+
+        try {
+            player.setPlayerDataNBT(readPlayerData(uuid));
+            Logger.global.logDebug("Player data updated " + player.getName());
+        } catch (IOException e) {
+            Logger.global.logError("Could not read player data", e);
         }
     }
 
@@ -107,5 +149,12 @@ public class PlayerProvider {
                 .stream()
                 .filter(VanillaPlayer::isUpToDate)
                 .collect(Collectors.toUnmodifiableSet());
+    }
+
+    public void close() {
+        completeReloadTask.cancel();
+        timer.cancel();
+        userCacheFileWatcher.close();
+        playerDataWatcher.close();
     }
 }

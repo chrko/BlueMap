@@ -95,6 +95,7 @@ public class FakePluginCLI {
                 Logger.global.logInfo("Stopping...");
                 updateInfoTask.cancel();
                 plugin.unload(false);
+                server.close();
             };
 
             Thread shutdownHook = new Thread(shutdown, "BlueMap-CLI-ShutdownHook");
