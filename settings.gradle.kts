@@ -10,5 +10,6 @@ includeBuild("BlueMapCommon")
 
 // implementations
 includeBuild("implementations/cli")
+includeBuild("implementations/cli-fake-plugin")
 
 includeBuild("implementations/paper")
