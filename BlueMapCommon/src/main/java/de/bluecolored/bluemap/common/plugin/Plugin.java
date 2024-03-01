@@ -50,6 +50,7 @@ import de.bluecolored.bluemap.core.util.FileHelper;
 import de.bluecolored.bluemap.core.util.Tristate;
 import de.bluecolored.bluemap.core.world.World;
 import de.bluecolored.bluemap.core.world.mca.MCAWorld;
+import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.configurate.gson.GsonConfigurationLoader;
 import org.spongepowered.configurate.serialize.SerializationException;
@@ -80,14 +81,20 @@ public class Plugin implements ServerEventListener {
 
     private final InterruptableReentrantLock loadingLock = new InterruptableReentrantLock();
 
+    @Getter
     private final String implementationType;
+    @Getter
     private final Server serverInterface;
 
+    @Getter
     private BlueMapService blueMap;
 
+    @Getter
     private PluginState pluginState;
 
+    @Getter
     private RenderManager renderManager;
+    @Getter
     private HttpServer webServer;
     private Logger webLogger;
 
@@ -97,8 +104,10 @@ public class Plugin implements ServerEventListener {
 
     private Map<String, RegionFileWatchService> regionFileWatchServices;
 
+    @Getter
     private PlayerSkinUpdater skinUpdater;
 
+    @Getter
     private boolean loaded = false;
 
     public Plugin(String implementationType, Server serverInterface) {
@@ -618,38 +627,6 @@ public class Plugin implements ServerEventListener {
     public @Nullable World getWorld(ServerWorld serverWorld) {
         String id = MCAWorld.id(serverWorld.getWorldFolder(), serverWorld.getDimension());
         return getBlueMap().getWorlds().get(id);
-    }
-
-    public Server getServerInterface() {
-        return serverInterface;
-    }
-
-    public BlueMapService getBlueMap() {
-        return blueMap;
-    }
-
-    public PluginState getPluginState() {
-        return pluginState;
-    }
-
-    public RenderManager getRenderManager() {
-        return renderManager;
-    }
-
-    public HttpServer getWebServer() {
-        return webServer;
-    }
-
-    public boolean isLoaded() {
-        return loaded;
-    }
-
-    public String getImplementationType() {
-        return implementationType;
-    }
-
-    public PlayerSkinUpdater getSkinUpdater() {
-        return skinUpdater;
     }
 
     private void initFileWatcherTasks() {
