@@ -81,7 +81,7 @@ class VanillaPlayer implements Player {
 
     @Override
     public ServerWorld getWorld() {
-        return null;
+        return DummyServerWorld.byDimension(playerDataNBT.getDimension());
     }
 
     @Override

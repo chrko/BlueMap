@@ -76,7 +76,7 @@ public class VanillaServer implements Server, ServerEventListener {
 
         serverWorlds = new HashSet<>();
         for (Key key : Arrays.asList(DataPack.DIMENSION_OVERWORLD, DataPack.DIMENSION_THE_NETHER, DataPack.DIMENSION_THE_END)) {
-            serverWorlds.add(new DummyServerWorld(worldFolder, key));
+            serverWorlds.add(DummyServerWorld.of(worldFolder, key));
         }
 
         playerProvider = new PlayerProvider(this, serverRoot.resolve("usercache.json"), worldFolder.resolve("playerdata"));
@@ -110,7 +110,7 @@ public class VanillaServer implements Server, ServerEventListener {
     @Override
     public Optional<ServerWorld> getServerWorld(World world) {
         if (world instanceof MCAWorld) {
-            ServerWorld serverWorld = new DummyServerWorld((MCAWorld) world);
+            ServerWorld serverWorld = DummyServerWorld.of((MCAWorld) world);
             return Optional.of(serverWorld);
         }
         return Optional.empty();

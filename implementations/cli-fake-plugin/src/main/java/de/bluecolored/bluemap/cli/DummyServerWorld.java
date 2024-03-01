@@ -29,19 +29,32 @@ import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.world.mca.MCAWorld;
 
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DummyServerWorld implements ServerWorld {
+    private static final Map<Key, DummyServerWorld> cachedWorlds = new ConcurrentHashMap<>();
+
     private final Path worldFolder;
     private final Key dimension;
 
-    public DummyServerWorld(MCAWorld mcaWorld) {
-        worldFolder = mcaWorld.getWorldFolder();
-        dimension = mcaWorld.getDimension();
+    public static DummyServerWorld of(MCAWorld mcaWorld) {
+        return of(mcaWorld.getWorldFolder(), mcaWorld.getDimension());
     }
 
-    public DummyServerWorld(Path worldFolder, Key dimension) {
-        this.worldFolder = worldFolder;
+    public static DummyServerWorld of(Path worldFolder, Key dimension) {
+        var world = new DummyServerWorld(worldFolder, dimension);
+        cachedWorlds.put(world.dimension, world);
+        return world;
+    }
+
+    public static DummyServerWorld byDimension(Key dimension) {
+        return cachedWorlds.get(dimension);
+    }
+
+    private DummyServerWorld(Path worldFolder, Key dimension) {
+        this.worldFolder = worldFolder.toAbsolutePath().normalize();
         this.dimension = dimension;
     }
 
