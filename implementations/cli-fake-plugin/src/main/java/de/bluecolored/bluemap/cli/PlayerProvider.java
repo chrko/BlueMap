@@ -29,6 +29,7 @@ import de.bluecolored.bluemap.common.serverinterface.ServerEventListener;
 import de.bluecolored.bluemap.core.logger.Logger;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -99,24 +100,31 @@ public class PlayerProvider {
     }
 
     private void loadUserCache() {
-        try {
-            Collection<UserCache.User> userCache = UserCache.read(Files.newBufferedReader(userCacheFile, StandardCharsets.UTF_8));
+        Collection<UserCache.User> userCache;
+        try (Reader r = Files.newBufferedReader(userCacheFile, StandardCharsets.UTF_8)) {
+            userCache = UserCache.read(r);
             Logger.global.logDebug("Found " + userCache.size() + " users in user cache");
-
-            for (UserCache.User user : userCache) {
-                PlayerDataNBT playerDataNBT = readPlayerData(user.getUuid());
-                var player = players.get(user.getUuid());
-                if (player != null) {
-                    player.setUser(user);
-                    player.setPlayerDataNBT(playerDataNBT);
-                } else {
-                    player = new VanillaPlayer(user, playerDataNBT);
-                    players.put(player.getUuid(), player);
-                }
-                listener.onPlayerJoin(player.getUuid());
-            }
         } catch (IOException e) {
-            Logger.global.logError("Error reloading all players", e);
+            Logger.global.logError("Error reading user cache file", e);
+            return;
+        }
+        for (UserCache.User user : userCache) {
+            PlayerDataNBT playerDataNBT;
+            try {
+                playerDataNBT = readPlayerData(user.getUuid());
+            } catch (IOException e) {
+                Logger.global.logError("Error reading player data for " + user, e);
+                continue;
+            }
+            var player = players.get(user.getUuid());
+            if (player != null) {
+                player.setUser(user);
+                player.setPlayerDataNBT(playerDataNBT);
+            } else {
+                player = new VanillaPlayer(user, playerDataNBT);
+                players.put(player.getUuid(), player);
+            }
+            listener.onPlayerJoin(player.getUuid());
         }
     }
 
