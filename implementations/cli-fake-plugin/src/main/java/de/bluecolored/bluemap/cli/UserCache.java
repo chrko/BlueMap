@@ -90,7 +90,7 @@ public class UserCache {
     private static final Gson GSON = new GsonBuilder().registerTypeAdapter(Instant.class, new ExpiresOnGson()).create();
 
     private static class ExpiresOnGson implements JsonDeserializer<Instant> {
-        private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss x");
+        private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z");
 
         @Override
         public Instant deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
