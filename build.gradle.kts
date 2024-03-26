@@ -17,6 +17,7 @@ tasks.register("build") {
     gradle.includedBuilds.forEach {
         if (it.name == "BlueMapCore") return@forEach
         if (it.name == "BlueMapCommon") return@forEach
+        if (it.name == "BlueNBT") return@forEach
 
         dependsOn(it.task(":release"))
     }
